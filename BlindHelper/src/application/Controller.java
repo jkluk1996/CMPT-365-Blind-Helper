@@ -1,5 +1,9 @@
 package application;
 
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
@@ -9,9 +13,13 @@ import org.opencv.core.Mat;
 import org.opencv.core.Size;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.videoio.VideoCapture;
+import org.opencv.videoio.Videoio;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Slider;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import utilities.Utilities;
 
@@ -19,8 +27,13 @@ public class Controller {
 	
 	@FXML
 	private ImageView imageView; // the image display window in the GUI
+	@FXML
+	private Slider slider;
 	
 	private Mat image;
+	private VideoCapture capture;
+	private ScheduledExecutorService timer;
+
 	
 	private int width;
 	private int height;
@@ -59,16 +72,20 @@ public class Controller {
 	private String getImageFilename() {
 		// This method should return the filename of the image to be played
 		// You should insert your code here to allow user to select the file
-		return "resources/test.png";
+		return "resources/test.mp4";
 	}
 	
 	@FXML
 	protected void openImage(ActionEvent event) throws InterruptedException {
 		// This method opens an image and display it using the GUI
 		// You should modify the logic so that it opens and displays a video
-		final String imageFilename = getImageFilename();
-		image = Imgcodecs.imread(imageFilename);
-		imageView.setImage(Utilities.mat2Image(image)); 
+//		final String imageFilename = getImageFilename();
+//		image = Imgcodecs.imread(imageFilename);
+//		imageView.setImage(Utilities.mat2Image(image)); 
+		capture = new VideoCapture(getImageFilename()); // open video file
+			if (capture.isOpened()) { // open successfully
+				createFrameGrabber();
+		 }
 		// You don't have to understand how mat2Image() works. 
 		// In short, it converts the image from the Mat format to the Image format
 		// The Mat format is used by the opencv library, and the Image format is used by JavaFX
@@ -123,4 +140,39 @@ public class Controller {
 			// What should you do here?
 		}
 	} 
+
+	protected void createFrameGrabber() throws InterruptedException {
+		 if (capture != null && capture.isOpened()) { // the video must be open
+			 double framePerSecond = capture.get(Videoio.CAP_PROP_FPS);
+		 
+			 // create a runnable to fetch new frames periodically
+			 Runnable frameGrabber = new Runnable() {
+				 @Override
+				 public void run() {
+					 Mat frame = new Mat();
+					 if (capture.read(frame)) { // decode successfully
+						 Image im = Utilities.mat2Image(frame);
+						 Utilities.onFXThread(imageView.imageProperty(), im);
+						 double currentFrameNumber = capture.get(Videoio.CAP_PROP_POS_FRAMES);
+						 double totalFrameCount = capture.get(Videoio.CAP_PROP_FRAME_COUNT);
+						 slider.setValue(currentFrameNumber / totalFrameCount * (slider.getMax() - slider.getMin()));
+					 } else { // reach the end of the video
+						 capture.set(Videoio.CAP_PROP_POS_FRAMES, 0);
+					 }
+				 }
+			 };
+			
+		 // terminate the timer if it is running
+		 if (timer != null && !timer.isShutdown()) {
+			 timer.shutdown();
+			 timer.awaitTermination(Math.round(1000/framePerSecond),
+			 TimeUnit.MILLISECONDS);
+		 }
+		 // run the frame grabber
+		 timer = Executors.newSingleThreadScheduledExecutor();
+		 timer.scheduleAtFixedRate(frameGrabber, 0, Math.round(1000/framePerSecond), TimeUnit.MILLISECONDS);
+		 }
+	}
 }
+
+
