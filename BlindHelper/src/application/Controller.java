@@ -1,7 +1,6 @@
 package application;
 
-import java.awt.FileDialog;
-import java.awt.Frame;
+import java.io.File;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.concurrent.Executors;
@@ -13,6 +12,8 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
@@ -34,7 +35,6 @@ import utilities.Utilities;
 
 // TODO:
 // Other Optional: done added pause feature, added moving slider, needed: resize video/centre
-// Open video do they need to be in resources?
 public class Controller {
 	
 	@FXML
@@ -127,25 +127,19 @@ public class Controller {
 	private String getImageFilename() {
 		// This method should return the filename of the image to be played
 		// You should insert your code here to allow user to select the file
-		final Frame f = new Frame();
-		FileDialog fd = new FileDialog(f, "Choose a file", FileDialog.LOAD);
-		fd.setDirectory("C:\\");
-		// Only mp4?
-		fd.setFile("*.mp4");
-		fd.setVisible(true);
-//		String filename = new File(fd.getFile()).getAbsolutePath();
-		String filename = fd.getFile();
-		if (filename == null) {
-			System.out.println("You cancelled the choice");
-			return null;
+		JFileChooser chooser = new JFileChooser();
+		FileNameExtensionFilter mp4filter = new FileNameExtensionFilter("mp4 files (*.mp4)", "mp4");
+		chooser.setFileFilter(mp4filter);		
+		int result = chooser.showOpenDialog(null);
+		
+		if (result == JFileChooser.APPROVE_OPTION) {
+			File file = chooser.getSelectedFile();
+			return file.getAbsolutePath();
+		} else if (result == JFileChooser.CANCEL_OPTION) {
+		    System.out.println("Cancel was selected");
+		    return null;
 		}
-		else {
-			System.out.println("You chose " + filename);
-		}
-		//		return "resources/test.mp4";
-		//Note file needs to be in resources
-//		return filename;
-		return "resources/" + filename;
+		return null;
 	}
 	
 	@FXML
