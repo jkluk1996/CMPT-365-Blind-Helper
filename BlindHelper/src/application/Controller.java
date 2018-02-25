@@ -1,7 +1,8 @@
 package application;
 
-import java.awt.FileDialog;
-import java.awt.Frame;
+import java.io.File;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -11,6 +12,8 @@ import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import javax.swing.JFileChooser;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.opencv.core.Mat;
 import org.opencv.core.Size;
@@ -20,18 +23,18 @@ import org.opencv.videoio.Videoio;
 
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Slider;
+import javafx.scene.control.TextArea;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import utilities.Utilities;
 
 // TODO:
-// Press play with no video
 // Other Optional: done added pause feature, added moving slider, needed: resize video/centre
-// Open video do they need to be in resources?
-// imageview set or on thread?
 public class Controller {
 	
 	@FXML
@@ -106,7 +109,7 @@ public class Controller {
 				Mat frame = new Mat();
 				capture.read(frame);
 				Image im = Utilities.mat2Image(frame);
-				imageView.setImage(im);
+				Utilities.onFXThread(imageView.imageProperty(), im);
 				
 				if (playing) {
 					scheduledFuture = timer.scheduleAtFixedRate(soundPlayer, 0, Math.round(1000/framePerSecond), TimeUnit.MILLISECONDS);
@@ -124,25 +127,19 @@ public class Controller {
 	private String getImageFilename() {
 		// This method should return the filename of the image to be played
 		// You should insert your code here to allow user to select the file
-		final Frame f = new Frame();
-		FileDialog fd = new FileDialog(f, "Choose a file", FileDialog.LOAD);
-		fd.setDirectory("C:\\");
-		// Only mp4?
-		fd.setFile("*.mp4");
-		fd.setVisible(true);
-//		String filename = new File(fd.getFile()).getAbsolutePath();
-		String filename = fd.getFile();
-		if (filename == null) {
-			System.out.println("You cancelled the choice");
-			return null;
+		JFileChooser chooser = new JFileChooser();
+		FileNameExtensionFilter mp4filter = new FileNameExtensionFilter("mp4 files (*.mp4)", "mp4");
+		chooser.setFileFilter(mp4filter);		
+		int result = chooser.showOpenDialog(null);
+		
+		if (result == JFileChooser.APPROVE_OPTION) {
+			File file = chooser.getSelectedFile();
+			return file.getAbsolutePath();
+		} else if (result == JFileChooser.CANCEL_OPTION) {
+		    System.out.println("Cancel was selected");
+		    return null;
 		}
-		else {
-			System.out.println("You chose " + filename);
-		}
-		//		return "resources/test.mp4";
-		//Note file needs to be in resources
-//		return filename;
-		return "resources/" + filename;
+		return null;
 	}
 	
 	@FXML
@@ -152,12 +149,12 @@ public class Controller {
 		String fileName = getImageFilename();
 		if (fileName != null) {
 			capture = new VideoCapture(fileName); // open video file
-		}
-		if (capture.isOpened()) { // open successfully
-			createFrameGrabber();
-			clickCounter = 0;
-			playBtn.setText("Play");
-			playing = false;
+			if (capture.isOpened()) { // open successfully
+				createFrameGrabber();
+				clickCounter = 0;
+				playBtn.setText("Play");
+				playing = false;
+			}
 		}
 		// You don't have to understand how mat2Image() works. 
 		// In short, it converts the image from the Mat format to the Image format
@@ -228,7 +225,16 @@ public class Controller {
 			playing = false;
 			playBtn.setText("Play");
 		}
-		else {}
+		else {
+			Exception e = new Exception("No Video Exception");
+			StringWriter sw = new StringWriter();
+			e.printStackTrace(new PrintWriter(sw));
+
+			Alert alert = new Alert(Alert.AlertType.ERROR);
+			alert.setHeaderText("Please open a video to play!");
+			alert.getDialogPane().setExpandableContent(new ScrollPane(new TextArea(sw.toString())));
+			alert.showAndWait();
+		}
 	} 
 
 	protected void createFrameGrabber() throws InterruptedException {
@@ -271,8 +277,7 @@ public class Controller {
 			 Mat frame = new Mat();
 			 if (capture.read(frame)) { // decode successfully
 				 Image im = Utilities.mat2Image(frame);
-//				 Utilities.onFXThread(imageView.imageProperty(), im);
-				 imageView.setImage(im);
+				 Utilities.onFXThread(imageView.imageProperty(), im);
 				 double currentFrameNumber = capture.get(Videoio.CAP_PROP_POS_FRAMES);
 				 double totalFrameCount = capture.get(Videoio.CAP_PROP_FRAME_COUNT);
 				 slider.setValue(currentFrameNumber / totalFrameCount * (slider.getMax() - slider.getMin()));
