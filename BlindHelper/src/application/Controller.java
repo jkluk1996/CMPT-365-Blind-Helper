@@ -33,8 +33,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import utilities.Utilities;
 
-// TODO:
-// Other Optional: done added pause feature, added moving slider, needed: resize video/centre
 public class Controller {
 	
 	@FXML
@@ -66,8 +64,6 @@ public class Controller {
 	
 	@FXML
 	private void initialize() {
-		// Optional: You should modify the logic so that the user can change these values
-		// You may also do some experiments with different values
 		width = 64;
 		height = 64;
 		sampleRate = 8000;
@@ -88,6 +84,7 @@ public class Controller {
 			freq[m] = freq[m+1] * Math.pow(2, -1.0/12.0); 
 		}
 		
+		// Added events for reacting to mouse presses on the slider to update video
 		slider.setOnMousePressed((MouseEvent event) -> {
 			if (capture != null) {
 				scheduledFuture.cancel(true);
@@ -116,12 +113,6 @@ public class Controller {
 				}
 			}
 		});
-		
-//		frame.addComponentListener(new ComponentListener() {
-//		    public void componentResized(ComponentEvent e) {
-//		        // do stuff           
-//		    }
-//		});
 	}
 	
 	private String getImageFilename() {
@@ -146,6 +137,7 @@ public class Controller {
 	protected void openImage(ActionEvent event) throws InterruptedException {
 		// This method opens an image and display it using the GUI
 		// You should modify the logic so that it opens and displays a video
+		// Uses JFileChooser to open the selected mp4 file
 		String fileName = getImageFilename();
 		if (fileName != null) {
 			capture = new VideoCapture(fileName); // open video file
@@ -270,6 +262,7 @@ public class Controller {
 		 }
 	}
 	
+	// Added Runnable for the repeated blind helper sound to be played
 	Runnable soundPlayer = new Runnable() {
 		 @Override
 		 public void run() {
